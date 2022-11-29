@@ -1,6 +1,6 @@
 // This is an attempt to port the crowdfunding contract from the paper "The next 700 Smart Contract Languages"
 // It is a port from Solidity to Move
-// This contract still has to be tested!
+
 module crowdfunding::crowdfunding{
     use std::signer;
     use std::vector;
@@ -16,7 +16,9 @@ module crowdfunding::crowdfunding{
 
     const CAMPAIGN_GOAL_NOT_REACHED: u64 = 4;
 
-    const EONLY_CROWDFUNDING_OWNER_CAN_PERFORM_THIS_OPERATION: u64 = 5;
+    const CAMPAIGN_GOAL_REACHED: u64 = 5;
+
+    const EONLY_CROWDFUNDING_OWNER_CAN_PERFORM_THIS_OPERATION: u64 = 6;
 
     // Constants
     const DAY_CONVERSION_FACTOR: u64 = 24 * 60 * 60;
@@ -56,7 +58,7 @@ module crowdfunding::crowdfunding{
         assert!(coin::balance<CoinType>(addr) >= amount, ENO_SUFFICIENT_FUND);
         let coin_to_deposit = coin::withdraw<CoinType>(account, amount);
         let val = coin::value<CoinType>(&coin_to_deposit);
-        let cf = borrow_global_mut<CrowdFunding<CoinType>>(@crowdfunding);
+        let cf = borrow_global_mut<CrowdFunding<CoinType>>(@crowdfunding); // FFT: What if the address of the cf is passed as an argument?
 
         // Check if resource doesn't already exist. If it doesn't create one
         if(!exists<Deposit<CoinType>>(addr)){
@@ -82,9 +84,10 @@ module crowdfunding::crowdfunding{
     public fun getRefund<CoinType>(account: &signer) acquires Deposit, CrowdFunding{
         // Get address of `signer` by utilizing `Signer` module of Standard Library
         let addr = signer::address_of(account);
-
-        // Check if resource exists at address, otherwise throw error
+        
+        // Checks 
         assert!(exists<Deposit<CoinType>>(addr), ENO_DEPOSIT);
+        assertGoalReached<CoinType>(false);
         assertDeadlinePassed<CoinType>();
 
         // Extract `Deposit` resource from all donor accounts.
@@ -98,11 +101,16 @@ module crowdfunding::crowdfunding{
     public fun claimFunds<CoinType>(account: &signer) acquires Deposit, CrowdFunding{
         // Only owner can call this function
         let addr = signer::address_of(account);
+
+        //Checks
         assert!(addr == @crowdfunding, EONLY_CROWDFUNDING_OWNER_CAN_PERFORM_THIS_OPERATION);
-        assertGoalReached<CoinType>();
+        assertGoalReached<CoinType>(true);
+
         let donors = &mut borrow_global_mut<CrowdFunding<CoinType>>(@crowdfunding).donors;
         withdrawCoinsFromDeposits<CoinType>(donors);
     }
+
+
 
     /// Helper functions
 
@@ -114,10 +122,14 @@ module crowdfunding::crowdfunding{
         assert!(now >= deadline, CAMPAIGN_NOT_YET_EXPIRED);
     }
 
-    // Check if goal is reached
-    fun assertGoalReached<CoinType>() acquires CrowdFunding{
+    // Check if goal is (not) reached
+    fun assertGoalReached<CoinType>(checkReached: bool) acquires CrowdFunding{
         let cf = borrow_global<CrowdFunding<CoinType>>(@crowdfunding);
-        assert!(cf.funding >= cf.goal, CAMPAIGN_GOAL_NOT_REACHED);
+        if(checkReached){
+            assert!(cf.funding >= cf.goal, CAMPAIGN_GOAL_NOT_REACHED);
+        } else {
+            assert!(cf.funding < cf.goal, CAMPAIGN_GOAL_REACHED);
+        };   
     }
 
     // Go through donors vector 
