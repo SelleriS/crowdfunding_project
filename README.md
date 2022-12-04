@@ -21,7 +21,7 @@ There is a major difference in how resources are handled in both languages.
 ...
 
 
-## Resources used
+## Sources
 1. [Pontem Network Docs](https://docs.pontem.network/02.-move-language/lang)
 2. [Pontem Network Playground](https://playground.pontem.network)
 3. [Diem Move Docs](https://diem.github.io/move/introduction.html)
