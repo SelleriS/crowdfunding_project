@@ -6,8 +6,8 @@ The goal of this project is to port a crowdfunding smart contract from Solidity 
 The smart contract that was ported is taken from the paper: *The Next 700 Smart Contract Languages* - *Ilya Sergey*
 
 ## Files
-- The ported smart contract can be found in [a relative link](sources/CrowdFunding.move)
-- Tests developed to test the different features of the contract can be found in [a relative link](tests/CrowdFundingTests.move)
+- The ported smart contract can be found in [CrowdFunding.move](sources/CrowdFunding.move)
+- Tests developed to test the different features of the contract can be found in [CrowdFundingTests.move](tests/CrowdFundingTests.move)
 
 ## Findings
 
