@@ -7,7 +7,9 @@ module crowdfunding::crowdfunding{
     use aptos_framework::timestamp;
     use aptos_framework::coin::{Self, Coin};
 
-    /// Error codes
+///////////////////////////////////////////////
+//                Error Codes                //
+///////////////////////////////////////////////
     const ENO_SUFFICIENT_FUND: u64 = 1;
 
     const ENO_DEPOSIT: u64 = 2;
@@ -20,11 +22,16 @@ module crowdfunding::crowdfunding{
 
     const EONLY_CROWDFUNDING_OWNER_CAN_PERFORM_THIS_OPERATION: u64 = 6;
 
+    const CAMPAIGN_DOES_NOT_EXIST: u64 = 7;
+
     // Constants
     const DAY_CONVERSION_FACTOR: u64 = 24 * 60 * 60;
 
-    /// Define `Storage` resource.
-    /// The resource would store `T` (generic) kind of data under `val` field.
+    const MINUTE_CONVERSION_FACTOR: u64 =  60;
+
+///////////////////////////////////////////////
+//                 Resources                 //
+///////////////////////////////////////////////
     struct Deposit<phantom CoinType> has key {
         coin: Coin<CoinType>,
     }
@@ -36,9 +43,13 @@ module crowdfunding::crowdfunding{
         funding: u64,
     }
 
-    public entry fun initialize_crowdfunding<CoinType>(account: &signer, goal: u64, numerOfDays: u64) {
-        let today = timestamp::now_seconds()/DAY_CONVERSION_FACTOR;
-        let deadline = today + numerOfDays;
+///////////////////////////////////////////////
+//                 Functions                 //
+///////////////////////////////////////////////
+    public entry fun initialize_crowdfunding<CoinType>(account: &signer, goal: u64, numberOfMinutes: u64) {
+        //let now = timestamp::now_seconds()/DAY_CONVERSION_FACTOR;
+        let now = timestamp::now_seconds()/MINUTE_CONVERSION_FACTOR;
+        let deadline = now + numberOfMinutes;
         move_to(
             account,
             CrowdFunding<CoinType> {
@@ -50,9 +61,8 @@ module crowdfunding::crowdfunding{
         );
     }
 
-    /// `signer` - transaction sender.
-    /// `val` - the value to store.
-    public fun donate<CoinType>(account: &signer, amount: u64) acquires Deposit, CrowdFunding{
+    public entry fun donate<CoinType>(account: &signer, amount: u64) acquires Deposit, CrowdFunding{
+        assertCrowdfundingInitialized<CoinType>();
         // Get address of `signer` by utilizing `Signer` module of Standard Library
         let addr = signer::address_of(account);
         assert!(coin::balance<CoinType>(addr) >= amount, ENO_SUFFICIENT_FUND);
@@ -79,9 +89,9 @@ module crowdfunding::crowdfunding{
         cf.funding = cf.funding + val;
     }
 
-    /// Get stored value under signer account.
-    /// `signer` - transaction sender, which stored value.
-    public fun getRefund<CoinType>(account: &signer) acquires Deposit, CrowdFunding{
+
+    public entry fun getRefund<CoinType>(account: &signer) acquires Deposit, CrowdFunding{
+        assertCrowdfundingInitialized<CoinType>();
         // Get address of `signer` by utilizing `Signer` module of Standard Library
         let addr = signer::address_of(account);
         
@@ -98,7 +108,8 @@ module crowdfunding::crowdfunding{
 
     /// This function doesn't use Deposit, but it calls a function that does
     /// So, this function has to acquire Deposit as well
-    public fun claimFunds<CoinType>(account: &signer) acquires Deposit, CrowdFunding{
+    public entry fun claimFunds<CoinType>(account: &signer) acquires Deposit, CrowdFunding{
+        assertCrowdfundingInitialized<CoinType>();
         // Only owner can call this function
         let addr = signer::address_of(account);
 
@@ -111,14 +122,20 @@ module crowdfunding::crowdfunding{
     }
 
 
-
-    /// Helper functions
+///////////////////////////////////////////////
+//             Helper Functions              //
+///////////////////////////////////////////////
+    // Check if the crowd funding campaign is initialized/ exists
+    fun assertCrowdfundingInitialized<CoinType>() {
+        assert!(exists<CrowdFunding<CoinType>>(@crowdfunding), CAMPAIGN_DOES_NOT_EXIST);
+    }
 
     // Check if deadline has passed
     fun assertDeadlinePassed<CoinType>() acquires CrowdFunding{
         let cf = borrow_global<CrowdFunding<CoinType>>(@crowdfunding);
         let deadline = cf.deadline;
-        let now = timestamp::now_seconds()/DAY_CONVERSION_FACTOR;
+        //let now = timestamp::now_seconds()/DAY_CONVERSION_FACTOR;
+        let now = timestamp::now_seconds()/MINUTE_CONVERSION_FACTOR;
         assert!(now >= deadline, CAMPAIGN_NOT_YET_EXPIRED);
     }
 
